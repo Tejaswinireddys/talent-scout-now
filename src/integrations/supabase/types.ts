@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      application_emails: {
+        Row: {
+          application_id: string
+          content: string
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          sent_at: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          application_id: string
+          content: string
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          application_id?: string
+          content?: string
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_emails_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_applications: {
         Row: {
           applicant_id: string
@@ -44,19 +115,51 @@ export type Database = {
           },
         ]
       }
+      job_sources: {
+        Row: {
+          base_url: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          rate_limit_per_hour: number | null
+        }
+        Insert: {
+          base_url: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          rate_limit_per_hour?: number | null
+        }
+        Update: {
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          rate_limit_per_hour?: number | null
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           company: string
           created_at: string
           description: string
+          external_id: string | null
+          external_url: string | null
           id: string
           is_active: boolean | null
           location: string
+          match_score: number | null
           posted_by: string | null
           requirements: string[] | null
           salary_max: number | null
           salary_min: number | null
+          scraped_at: string | null
           skills_required: string[] | null
+          source_id: string | null
           title: string
           type: string
           updated_at: string
@@ -65,14 +168,19 @@ export type Database = {
           company: string
           created_at?: string
           description: string
+          external_id?: string | null
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           location: string
+          match_score?: number | null
           posted_by?: string | null
           requirements?: string[] | null
           salary_max?: number | null
           salary_min?: number | null
+          scraped_at?: string | null
           skills_required?: string[] | null
+          source_id?: string | null
           title: string
           type: string
           updated_at?: string
@@ -81,19 +189,32 @@ export type Database = {
           company?: string
           created_at?: string
           description?: string
+          external_id?: string | null
+          external_url?: string | null
           id?: string
           is_active?: boolean | null
           location?: string
+          match_score?: number | null
           posted_by?: string | null
           requirements?: string[] | null
           salary_max?: number | null
           salary_min?: number | null
+          scraped_at?: string | null
           skills_required?: string[] | null
+          source_id?: string | null
           title?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "job_sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -131,6 +252,173 @@ export type Database = {
           resume_url?: string | null
           skills?: string[] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          requests_count: number | null
+          source_id: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requests_count?: number | null
+          source_id: string
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requests_count?: number | null
+          source_id?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limits_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "job_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resume_profiles: {
+        Row: {
+          certifications: string[] | null
+          content: string
+          created_at: string
+          education: string | null
+          experience_years: number | null
+          id: string
+          is_primary: boolean | null
+          skills: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certifications?: string[] | null
+          content: string
+          created_at?: string
+          education?: string | null
+          experience_years?: number | null
+          id?: string
+          is_primary?: boolean | null
+          skills?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certifications?: string[] | null
+          content?: string
+          created_at?: string
+          education?: string | null
+          experience_years?: number | null
+          id?: string
+          is_primary?: boolean | null
+          skills?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scraping_jobs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          jobs_found: number | null
+          metadata: Json | null
+          search_query_id: string | null
+          source_id: string | null
+          started_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          jobs_found?: number | null
+          metadata?: Json | null
+          search_query_id?: string | null
+          source_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          jobs_found?: number | null
+          metadata?: Json | null
+          search_query_id?: string | null
+          source_id?: string | null
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraping_jobs_search_query_id_fkey"
+            columns: ["search_query_id"]
+            isOneToOne: false
+            referencedRelation: "search_queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scraping_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "job_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_queries: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          job_type: string | null
+          last_run_at: string | null
+          location: string | null
+          query: string
+          salary_range: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          last_run_at?: string | null
+          location?: string | null
+          query: string
+          salary_range?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          job_type?: string | null
+          last_run_at?: string | null
+          location?: string | null
+          query?: string
+          salary_range?: string | null
+          user_id?: string
         }
         Relationships: []
       }
