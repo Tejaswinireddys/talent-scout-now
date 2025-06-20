@@ -1,247 +1,249 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, DollarSign, Calendar, ExternalLink } from "lucide-react";
-
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  salary: string;
-  posted: string;
-  source: string;
-  type: string;
-  description: string;
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useJobScraping } from "@/hooks/useJobScraping";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import JobScrapingPanel from "./JobScrapingPanel";
+import { Search, MapPin, DollarSign, Clock, Building, ExternalLink } from "lucide-react";
 
 const JobSearch = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [workType, setWorkType] = useState("");
-  const [salaryRange, setSalaryRange] = useState("");
-  const [jobSources, setJobSources] = useState({
-    linkedin: true,
-    indeed: true,
-    glassdoor: true,
-    angellist: true,
-    stackoverflow: false,
-    weworkremotely: false,
-  });
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const { trackEvent } = useAnalytics();
 
-  // Mock job data
-  const [jobs] = useState<Job[]>([
+  // Mock job data for demonstration
+  const mockJobs = [
     {
       id: "1",
-      title: "Senior React Developer",
-      company: "TechCorp Inc",
-      location: "Remote (US)",
-      salary: "$120k - $150k",
-      posted: "2 days ago",
-      source: "LinkedIn",
-      type: "Remote",
-      description: "We are looking for a Senior React Developer to join our team..."
+      title: "Senior Frontend Developer",
+      company: "TechCorp",
+      location: "San Francisco, CA",
+      type: "Full-time",
+      salary_range: "$120k - $160k",
+      description: "We're looking for an experienced frontend developer...",
+      skills_required: ["React", "TypeScript", "Node.js"],
+      posted_date: "2 days ago",
+      match_score: 95,
+      external_url: "https://example.com/job1"
     },
     {
       id: "2",
       title: "Full Stack Engineer",
       company: "StartupXYZ",
-      location: "San Francisco, CA",
-      salary: "$90k - $130k",
-      posted: "1 day ago",
-      source: "AngelList",
-      type: "Hybrid",
-      description: "Join our growing startup as a Full Stack Engineer..."
+      location: "Remote",
+      type: "Full-time",
+      salary_range: "$100k - $140k",
+      description: "Join our growing team of engineers...",
+      skills_required: ["JavaScript", "Python", "AWS"],
+      posted_date: "1 week ago",
+      match_score: 87,
+      external_url: "https://example.com/job2"
     },
     {
       id: "3",
-      title: "Frontend Developer",
-      company: "DesignStudio",
+      title: "React Developer",
+      company: "WebAgency",
       location: "New York, NY",
-      salary: "$80k - $110k",
-      posted: "3 days ago",
-      source: "Indeed",
-      type: "On-site",
-      description: "We need a creative Frontend Developer to build amazing UIs..."
+      type: "Contract",
+      salary_range: "$80k - $110k",
+      description: "Looking for a React specialist...",
+      skills_required: ["React", "JavaScript", "CSS"],
+      posted_date: "3 days ago",
+      match_score: 92,
+      external_url: "https://example.com/job3"
     }
-  ]);
-
-  const countries = [
-    "United States", "Canada", "United Kingdom", "Germany", "France", 
-    "Australia", "India", "Singapore", "Netherlands", "Sweden"
   ];
 
-  const handleSourceChange = (source: string, checked: boolean) => {
-    setJobSources(prev => ({ ...prev, [source]: checked }));
+  const handleQuickSearch = (query: string) => {
+    setIsSearching(true);
+    trackEvent('quick_search_performed', { query });
+    
+    // Simulate search delay
+    setTimeout(() => {
+      const filteredJobs = mockJobs.filter(job => 
+        job.title.toLowerCase().includes(query.toLowerCase()) ||
+        job.company.toLowerCase().includes(query.toLowerCase()) ||
+        job.skills_required.some(skill => 
+          skill.toLowerCase().includes(query.toLowerCase())
+        )
+      );
+      setSearchResults(filteredJobs);
+      setIsSearching(false);
+    }, 1500);
+  };
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 90) return "bg-green-100 text-green-800";
+    if (score >= 75) return "bg-yellow-100 text-yellow-800";
+    return "bg-gray-100 text-gray-800";
   };
 
   return (
     <div className="space-y-6">
-      {/* Search Filters */}
-      <Card>
+      {/* Quick Search Header */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Job Search Filters
+          <CardTitle className="flex items-center gap-2 text-indigo-900">
+            <Search className="h-6 w-6" />
+            Job Search & Discovery
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Job Title / Keywords</Label>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                id="search"
-                placeholder="e.g., React Developer"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search for jobs, companies, or skills..."
+                className="pl-10"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuickSearch(e.currentTarget.value);
+                  }
+                }}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Select value={selectedCountry} onValueChange={setSelectedCountry}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countries.map((country) => (
-                    <SelectItem key={country} value={country}>
-                      {country}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="worktype">Work Type</Label>
-              <Select value={workType} onValueChange={setWorkType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="remote">Remote</SelectItem>
-                  <SelectItem value="hybrid">Hybrid</SelectItem>
-                  <SelectItem value="onsite">On-site</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="salary">Salary Range</Label>
-              <Select value={salaryRange} onValueChange={setSalaryRange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50-80k">$50k - $80k</SelectItem>
-                  <SelectItem value="80-120k">$80k - $120k</SelectItem>
-                  <SelectItem value="120k+">$120k+</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Job Sources */}
-          <div className="space-y-3">
-            <Label>Job Sources</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {Object.entries(jobSources).map(([source, checked]) => (
-                <div key={source} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={source}
-                    checked={checked}
-                    onCheckedChange={(checked) => handleSourceChange(source, checked as boolean)}
-                  />
-                  <Label htmlFor={source} className="capitalize text-sm">
-                    {source === 'weworkremotely' ? 'WeWorkRemotely' : 
-                     source === 'stackoverflow' ? 'Stack Overflow' : 
-                     source === 'angellist' ? 'AngelList' : source}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button className="bg-indigo-600 hover:bg-indigo-700">
-              <Search className="h-4 w-4 mr-2" />
-              Search Jobs
+            <Button 
+              onClick={() => {
+                const input = document.querySelector('input[placeholder*="Search for jobs"]') as HTMLInputElement;
+                handleQuickSearch(input?.value || '');
+              }}
+              disabled={isSearching}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isSearching ? 'Searching...' : 'Search'}
             </Button>
-            <Button variant="outline">
-              Save Search
-            </Button>
+          </div>
+          
+          {/* Quick Search Buttons */}
+          <div className="flex flex-wrap gap-2">
+            {["React Developer", "Frontend Engineer", "Full Stack", "Remote Jobs"].map((term) => (
+              <Button
+                key={term}
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickSearch(term)}
+                className="text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+              >
+                {term}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Job Results */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-semibold">Found {jobs.length} Jobs</h3>
-          <Button variant="outline" size="sm">
-            Apply to All Matching
-          </Button>
-        </div>
-
-        {jobs.map((job) => (
-          <Card key={job.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-1">
-                    {job.title}
-                  </h4>
-                  <p className="text-gray-600 mb-2">{job.company}</p>
-                  <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      {job.location}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4" />
-                      {job.salary}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {job.posted}
-                    </span>
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Search Results ({searchResults.length})</span>
+              <Badge variant="secondary">{searchResults.length} jobs found</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {searchResults.map((job) => (
+                <div key={job.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
+                        <Badge className={getMatchScoreColor(job.match_score)}>
+                          {job.match_score}% match
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-gray-600 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Building className="h-4 w-4" />
+                          <span>{job.company}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{job.location}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4" />
+                          <span>{job.salary_range}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{job.posted_date}</span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-3">{job.description}</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {job.skills_required.map((skill: string) => (
+                          <Badge key={skill} variant="outline" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                      Apply Now
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      View Details
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      Save Job
+                    </Button>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <Badge variant="secondary">{job.source}</Badge>
-                  <Badge variant={job.type === 'Remote' ? 'default' : 'outline'}>
-                    {job.type}
-                  </Badge>
-                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabbed Interface */}
+      <Tabs defaultValue="scraping" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="scraping">Automated Scraping</TabsTrigger>
+          <TabsTrigger value="manual">Manual Search</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="scraping" className="space-y-4">
+          <JobScrapingPanel />
+        </TabsContent>
+        
+        <TabsContent value="manual" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Manual Job Search</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input placeholder="Job title or keywords" />
+                <Input placeholder="Location" />
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="remote">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <p className="text-gray-600 mb-4 line-clamp-2">
-                {job.description}
-              </p>
-              
-              <div className="flex gap-2">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                  Quick Apply
-                </Button>
-                <Button size="sm" variant="outline">
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  View Details
-                </Button>
-                <Button size="sm" variant="outline">
-                  Optimize Resume
-                </Button>
-              </div>
+              <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
+                <Search className="h-4 w-4 mr-2" />
+                Search Jobs Manually
+              </Button>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
