@@ -1,80 +1,44 @@
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useJobScraping } from "@/hooks/useJobScraping";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import JobScrapingPanel from "./JobScrapingPanel";
-import { Search, MapPin, DollarSign, Clock, Building, ExternalLink } from "lucide-react";
+import { Search, MapPin, DollarSign, Clock, Building, ExternalLink, X } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { supabase } from "@/integrations/supabase/client";
 
 const JobSearch = () => {
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const { trackEvent } = useAnalytics();
 
-  // Mock job data for demonstration
-  const mockJobs = [
-    {
-      id: "1",
-      title: "Senior Frontend Developer",
-      company: "TechCorp",
-      location: "San Francisco, CA",
-      type: "Full-time",
-      salary_range: "$120k - $160k",
-      description: "We're looking for an experienced frontend developer...",
-      skills_required: ["React", "TypeScript", "Node.js"],
-      posted_date: "2 days ago",
-      match_score: 95,
-      external_url: "https://example.com/job1"
+  const { data: searchResults, isFetching: isSearching } = useQuery({
+    queryKey: ['jobSearch', searchTerm],
+    queryFn: async () => {
+      if (!searchTerm) return [];
+      trackEvent('job_search_performed', { query: searchTerm });
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .textSearch('title_description', searchTerm, { type: 'websearch' });
+      
+      if (error) {
+        console.error("Error searching for jobs:", error);
+        return [];
+      }
+      return data;
     },
-    {
-      id: "2",
-      title: "Full Stack Engineer",
-      company: "StartupXYZ",
-      location: "Remote",
-      type: "Full-time",
-      salary_range: "$100k - $140k",
-      description: "Join our growing team of engineers...",
-      skills_required: ["JavaScript", "Python", "AWS"],
-      posted_date: "1 week ago",
-      match_score: 87,
-      external_url: "https://example.com/job2"
-    },
-    {
-      id: "3",
-      title: "React Developer",
-      company: "WebAgency",
-      location: "New York, NY",
-      type: "Contract",
-      salary_range: "$80k - $110k",
-      description: "Looking for a React specialist...",
-      skills_required: ["React", "JavaScript", "CSS"],
-      posted_date: "3 days ago",
-      match_score: 92,
-      external_url: "https://example.com/job3"
-    }
-  ];
+    enabled: !!searchTerm,
+  });
 
-  const handleQuickSearch = (query: string) => {
-    setIsSearching(true);
-    trackEvent('quick_search_performed', { query });
-    
-    // Simulate search delay
-    setTimeout(() => {
-      const filteredJobs = mockJobs.filter(job => 
-        job.title.toLowerCase().includes(query.toLowerCase()) ||
-        job.company.toLowerCase().includes(query.toLowerCase()) ||
-        job.skills_required.some(skill => 
-          skill.toLowerCase().includes(query.toLowerCase())
-        )
-      );
-      setSearchResults(filteredJobs);
-      setIsSearching(false);
-    }, 1500);
+  const handleSearch = (query: string) => {
+    setSearchTerm(query);
   };
 
   const getMatchScoreColor = (score: number) => {
@@ -100,18 +64,16 @@ const JobSearch = () => {
               <Input
                 placeholder="Search for jobs, companies, or skills..."
                 className="pl-10"
+                onChange={(e) => setSearchTerm(e.currentTarget.value)}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
-                    handleQuickSearch(e.currentTarget.value);
+                    handleSearch(e.currentTarget.value);
                   }
                 }}
               />
             </div>
             <Button 
-              onClick={() => {
-                const input = document.querySelector('input[placeholder*="Search for jobs"]') as HTMLInputElement;
-                handleQuickSearch(input?.value || '');
-              }}
+              onClick={() => handleSearch(searchTerm)}
               disabled={isSearching}
               className="bg-indigo-600 hover:bg-indigo-700"
             >
@@ -121,12 +83,12 @@ const JobSearch = () => {
           
           {/* Quick Search Buttons */}
           <div className="flex flex-wrap gap-2">
-            {["React Developer", "Frontend Engineer", "Full Stack", "Remote Jobs"].map((term) => (
+            {["DevOps", "Data Science", "React Developer", "Frontend Engineer", "Full Stack", "Remote Jobs"].map((term) => (
               <Button
                 key={term}
                 variant="outline"
                 size="sm"
-                onClick={() => handleQuickSearch(term)}
+                onClick={() => handleSearch(term)}
                 className="text-indigo-700 border-indigo-200 hover:bg-indigo-50"
               >
                 {term}
@@ -137,59 +99,63 @@ const JobSearch = () => {
       </Card>
 
       {/* Search Results */}
-      {searchResults.length > 0 && (
+      {(searchResults || []).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Search Results ({searchResults.length})</span>
-              <Badge variant="secondary">{searchResults.length} jobs found</Badge>
+              <span>Search Results ({(searchResults || []).length})</span>
+              <Badge variant="secondary">{(searchResults || []).length} jobs found</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {searchResults.map((job) => (
+              {(searchResults || []).map((job) => (
                 <div key={job.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                        <Badge className={getMatchScoreColor(job.match_score)}>
-                          {job.match_score}% match
-                        </Badge>
+                        {job.match_score && (
+                          <Badge className={getMatchScoreColor(job.match_score)}>
+                            {job.match_score}% match
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-4 text-gray-600 mb-2">
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-4 text-gray-600 mb-2 flex-wrap">
+                        {job.company && <div className="flex items-center gap-1">
                           <Building className="h-4 w-4" />
                           <span>{job.company}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
+                        </div>}
+                        {job.location && <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4" />
                           <span>{job.location}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
+                        </div>}
+                        {job.salary_range && <div className="flex items-center gap-1">
                           <DollarSign className="h-4 w-4" />
                           <span>{job.salary_range}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
+                        </div>}
+                        {job.posted_date && <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
                           <span>{job.posted_date}</span>
+                        </div>}
+                      </div>
+                      <p className="text-gray-700 mb-3 line-clamp-2">{job.description}</p>
+                      {job.skills_required && job.skills_required.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {job.skills_required.map((skill: string) => (
+                            <Badge key={skill} variant="outline" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
                         </div>
-                      </div>
-                      <p className="text-gray-700 mb-3">{job.description}</p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {job.skills_required.map((skill: string) => (
-                          <Badge key={skill} variant="outline" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-                      Apply Now
+                    <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                      <a href={job.external_url} target="_blank" rel="noopener noreferrer">Apply Now</a>
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedJob(job)}>
                       <ExternalLink className="h-3 w-3 mr-1" />
                       View Details
                     </Button>
@@ -204,42 +170,82 @@ const JobSearch = () => {
         </Card>
       )}
 
+      {/* Job Details Drawer */}
+      <Drawer open={!!selectedJob} onOpenChange={(isOpen) => !isOpen && setSelectedJob(null)}>
+        <DrawerContent className="max-h-[90vh]">
+          {selectedJob && (
+            <>
+              <DrawerHeader className="flex justify-between items-start">
+                <div>
+                  <DrawerTitle className="text-2xl font-bold text-gray-900">{selectedJob.title}</DrawerTitle>
+                  <DrawerDescription>
+                    <div className="flex items-center gap-4 text-gray-600 mt-2 flex-wrap">
+                      {selectedJob.company && <div className="flex items-center gap-1">
+                        <Building className="h-4 w-4" />
+                        <span>{selectedJob.company}</span>
+                      </div>}
+                      {selectedJob.location && <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span>{selectedJob.location}</span>
+                      </div>}
+                      {selectedJob.salary_range && <div className="flex items-center gap-1">
+                        <DollarSign className="h-4 w-4" />
+                        <span>{selectedJob.salary_range}</span>
+                      </div>}
+                      {selectedJob.posted_date && <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span>{selectedJob.posted_date}</span>
+                      </div>}
+                    </div>
+                  </DrawerDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setSelectedJob(null)}>
+                  <X className="h-6 w-6" />
+                </Button>
+              </DrawerHeader>
+              <div className="px-4 pb-4 overflow-y-auto">
+                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: selectedJob.description }} />
+                
+                {selectedJob.skills_required && selectedJob.skills_required.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-semibold mb-2">Skills Required</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedJob.skills_required.map((skill: string) => (
+                        <Badge key={skill} variant="outline">{skill}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <Button asChild size="lg" className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700">
+                  <a href={selectedJob.external_url} target="_blank" rel="noopener noreferrer">
+                    Apply on Company Site <ExternalLink className="h-4 w-4 ml-2" />
+                  </a>
+                </Button>
+              </div>
+            </>
+          )}
+        </DrawerContent>
+      </Drawer>
+
       {/* Tabbed Interface */}
-      <Tabs defaultValue="scraping" className="w-full">
+      <Tabs defaultValue="automated" className="mt-6">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="scraping">Automated Scraping</TabsTrigger>
+          <TabsTrigger value="automated">Automated Scraping</TabsTrigger>
           <TabsTrigger value="manual">Manual Search</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="scraping" className="space-y-4">
+        <TabsContent value="automated">
           <JobScrapingPanel />
         </TabsContent>
         
-        <TabsContent value="manual" className="space-y-4">
+        <TabsContent value="manual">
           <Card>
             <CardHeader>
-              <CardTitle>Manual Job Search</CardTitle>
+              <CardTitle>Manual Job Entry</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input placeholder="Job title or keywords" />
-                <Input placeholder="Location" />
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Job type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="remote">Remote</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-                <Search className="h-4 w-4 mr-2" />
-                Search Jobs Manually
-              </Button>
+            <CardContent>
+              <p>Manually add job applications you've submitted.</p>
+              {/* Form for manual entry can go here */}
             </CardContent>
           </Card>
         </TabsContent>
